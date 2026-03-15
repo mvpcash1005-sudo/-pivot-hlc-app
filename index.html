@@ -103,8 +103,8 @@ button{cursor:pointer;font-weight:bold}
   <div class="card">
     <h1>Pivot HLC 台股自動查詢計算器</h1>
     <div class="sub">
-      輸入代碼後，會先查上市，再查上櫃；抓到開高低收後直接自動計算。<br>
-      若瀏覽器擋跨站抓取，仍可手動輸入 H / L / C / O。
+      直接輸入代碼後按 <b>Enter</b>，就會自動查詢上市 / 上櫃資料並直接計算。<br>
+      如果自動抓取失敗，仍可手動輸入 H / L / C / O 後再按下方按鈕計算。
     </div>
 
     <div class="grid g3" style="margin-top:12px;">
@@ -136,7 +136,7 @@ button{cursor:pointer;font-weight:bold}
     </div>
 
     <div class="grid g3" style="margin-top:12px;">
-      <button class="primary" id="queryBtn">一鍵查詢並自動計算</button>
+      <button class="primary" id="queryBtn">查詢並自動計算</button>
       <button class="success" id="copyBtn">複製完整結果</button>
       <button class="ghost" id="lineBtn">複製 LINE 短版</button>
     </div>
@@ -175,13 +175,15 @@ button{cursor:pointer;font-weight:bold}
   </div>
 
   <div class="footer">
-    GitHub Pages Pivot Calculator
+    輸入代碼後按 Enter 可直接查詢並計算
   </div>
 </div>
 
 <script>
 const $ = (id) => document.getElementById(id);
 let lastInfo = null;
+let isQuerying = false;
+let lastQueriedCode = '';
 
 const levelDesc = {
   R5:'極端延伸壓力', R4:'高位延伸壓力', R3:'強壓區', R2:'次強壓力', R1:'第一壓力',
@@ -289,15 +291,15 @@ function buildText(info, mode, H, L, C, O, result, d){
   if(exists(result.P)) lines.push(`P±2% ${fmt(result.P*0.98,d)} ~ ${fmt(result.P*1.02,d)}`);
   if(exists(result.R1)) lines.push(`R1±2% ${fmt(result.R1*0.98,d)} ~ ${fmt(result.R1*1.02,d)}`);
   if(exists(result.S1)) lines.push(`S1±2% ${fmt(result.S1*0.98,d)} ~ ${fmt(result.S1*1.02,d)}`);
-  return lines.join('\\n');
+  return lines.join('\n');
 }
 
 function buildLineText(info, mode, result, d){
   const order = ['R5','R4','R3','R2','R1','P','S1','S2','S3','S4','S5'];
   const head = info?.code ? `${info.code}${info.name ? ' ' + info.name : ''}` : '';
-  return (head ? head + '\\n' : '') +
+  return (head ? head + '\n' : '') +
     order.filter(k => exists(result[k])).map(k => `${k}:${fmt(result[k], d)}`).join(' ｜ ') +
-    `\\n(${mode})`;
+    `\n(${mode})`;
 }
 
 // Pivot 計算
@@ -401,7 +403,7 @@ async function fetchTPEX(code){
   let found = null;
 
   for(const tr of rows){
-    const cells = Array.from(tr.querySelectorAll('th,td')).map(td => td.textContent.replace(/\\s+/g,' ').trim());
+    const cells = Array.from(tr.querySelectorAll('th,td')).map(td => td.textContent.replace(/\s+/g,' ').trim());
     if(cells.length && (cells[0] === code || cells.includes(code))){
       found = cells;
       break;
@@ -453,19 +455,28 @@ function calc(){
   renderRanges(result, d);
   renderLevels(result, d);
   $('output').value = buildText(lastInfo, mode, H, L, C, O, result, d);
-  setStatus('已完成計算。');
   return { mode, result, d };
 }
 
-async function queryAndCalculate(){
+async function queryAndCalculate(force = false){
   const code = $('stockCode').value.trim();
   const d = parseInt($('decimals').value, 10);
+
   if(!code){
     setStatus('請先輸入代碼。', true);
     return;
   }
 
+  if(isQuerying) return;
+  if(!force && code === lastQueriedCode && lastInfo){
+    calc();
+    setStatus(`已直接使用上次查詢資料：${lastInfo.code}${lastInfo.name ? ' ' + lastInfo.name : ''}`);
+    return;
+  }
+
+  isQuerying = true;
   setStatus('正在自動抓取上市 / 上櫃資料...');
+
   try{
     let info = null;
     try { info = await fetchTWSE(code); } catch(e){}
@@ -475,6 +486,7 @@ async function queryAndCalculate(){
     if(!info) throw new Error('找不到上市或上櫃資料，或瀏覽器阻擋跨站抓取');
 
     lastInfo = info;
+    lastQueriedCode = code;
     fillInputs(info);
     renderQuote(info, d);
 
@@ -484,6 +496,8 @@ async function queryAndCalculate(){
     setStatus(`已完成 ${info.market} / ${inferSecurityType(info)} 自動查詢與計算：${info.code}${info.name ? ' ' + info.name : ''}`);
   }catch(err){
     setStatus('自動查詢失敗：' + err.message + '。可改手動輸入 H / L / C。', true);
+  }finally{
+    isQuerying = false;
   }
 }
 
@@ -496,19 +510,22 @@ async function copyText(text){
   }
 }
 
-$('queryBtn').addEventListener('click', queryAndCalculate);
+$('queryBtn').addEventListener('click', () => queryAndCalculate(true));
+
 $('copyBtn').addEventListener('click', async () => {
   const data = calc();
   if(!data) return;
   await copyText($('output').value);
   setStatus('完整結果已複製。');
 });
+
 $('lineBtn').addEventListener('click', async () => {
   const data = calc();
   if(!data) return;
   await copyText(buildLineText(lastInfo, data.mode, data.result, data.d));
   setStatus('LINE 短版已複製。');
 });
+
 $('resetBtn').addEventListener('click', () => {
   ['stockCode','high','low','close','open'].forEach(id => $(id).value = '');
   $('levels').innerHTML = '';
@@ -516,11 +533,39 @@ $('resetBtn').addEventListener('click', () => {
   $('quoteBox').innerHTML = '';
   $('output').value = '';
   lastInfo = null;
+  lastQueriedCode = '';
   setStatus('已清空。');
 });
 
 $('stockCode').addEventListener('keydown', (e) => {
-  if(e.key === 'Enter') queryAndCalculate();
+  if(e.key === 'Enter'){
+    e.preventDefault();
+    queryAndCalculate(true);
+  }
+});
+
+$('stockCode').addEventListener('blur', () => {
+  const code = $('stockCode').value.trim();
+  if(code && code !== lastQueriedCode){
+    queryAndCalculate(true);
+  }
+});
+
+$('mode').addEventListener('change', () => {
+  if($('high').value && $('low').value && $('close').value){
+    calc();
+    setStatus('已依新模式重新計算。');
+  }
+});
+
+$('decimals').addEventListener('change', () => {
+  if($('high').value && $('low').value && $('close').value){
+    calc();
+    if(lastInfo){
+      renderQuote(lastInfo, parseInt($('decimals').value, 10));
+    }
+    setStatus('已依新小數位重新計算。');
+  }
 });
 
 $('stockCode').value = '2330';
