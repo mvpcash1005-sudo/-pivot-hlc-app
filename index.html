@@ -1,304 +1,529 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Pivot HLC 台股自動查詢計算器</title>
-
 <style>
-
 :root{
---bg:#0f172a;
---card:#111827;
---card2:#1f2937;
---line:#334155;
---text:#e5eefc;
---muted:#94a3b8;
---up:#ef4444;
---mid:#f59e0b;
---down:#22c55e;
---accent:#3b82f6;
+  --bg:#0f172a;
+  --card:#111827;
+  --card2:#1f2937;
+  --line:#334155;
+  --text:#e5eefc;
+  --muted:#94a3b8;
+  --up:#ef4444;
+  --mid:#f59e0b;
+  --down:#22c55e;
+  --accent:#3b82f6;
 }
-
 *{box-sizing:border-box}
-
 body{
-margin:0;
-font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans TC",sans-serif;
-background:linear-gradient(180deg,#0b1220,#111827);
-color:var(--text);
+  margin:0;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans TC",sans-serif;
+  background:linear-gradient(180deg,#0b1220,#111827);
+  color:var(--text);
 }
-
-.wrap{
-max-width:1000px;
-margin:auto;
-padding:16px;
-}
-
+.wrap{max-width:1000px;margin:auto;padding:16px}
 .card{
-background:rgba(17,24,39,.96);
-border:1px solid var(--line);
-border-radius:18px;
-padding:16px;
-margin-bottom:14px;
+  background:rgba(17,24,39,.96);
+  border:1px solid var(--line);
+  border-radius:18px;
+  padding:16px;
+  margin-bottom:14px;
 }
-
-h1,h2{
-margin:0 0 10px;
-}
-
-.grid{
-display:grid;
-gap:12px;
-}
-
-.g3{
-grid-template-columns:repeat(3,1fr);
-}
-
-.g4{
-grid-template-columns:repeat(4,1fr);
-}
-
-label{
-font-size:13px;
-color:var(--muted);
-}
-
+h1,h2{margin:0 0 10px}
+.sub{color:var(--muted);line-height:1.6;font-size:14px}
+.grid{display:grid;gap:12px}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}
+label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
 input,select,textarea,button{
-width:100%;
-padding:12px;
-border-radius:10px;
-border:1px solid var(--line);
-background:var(--card2);
-color:white;
+  width:100%;
+  padding:12px;
+  border-radius:10px;
+  border:1px solid var(--line);
+  background:var(--card2);
+  color:white;
+  font-size:16px;
 }
-
-textarea{
-min-height:200px;
-}
-
-button{
-cursor:pointer;
-font-weight:bold;
-}
-
+textarea{min-height:200px;resize:vertical;line-height:1.55}
+button{cursor:pointer;font-weight:bold}
 .primary{background:#3b82f6}
 .success{background:#16a34a}
 .ghost{background:#334155}
 .danger{background:#7f1d1d}
-
+.quote{
+  display:grid;
+  grid-template-columns:repeat(8,1fr);
+  gap:10px;
+  margin-top:12px;
+}
+.mini,.range{
+  background:#0f172a;
+  border:1px solid var(--line);
+  border-radius:10px;
+  padding:10px;
+}
+.mini .k{color:var(--muted);font-size:12px;margin-bottom:6px}
+.mini .v{font-size:16px;font-weight:700}
 .ranges{
-display:grid;
-grid-template-columns:repeat(3,1fr);
-gap:10px;
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:10px;
 }
-
-.range{
-background:#0f172a;
-padding:10px;
-border-radius:10px;
-border:1px solid var(--line);
-}
-
-.levels{
-display:grid;
-gap:8px;
-}
-
+.levels{display:grid;gap:8px}
 .lv{
-display:grid;
-grid-template-columns:60px 1fr auto;
-gap:8px;
-padding:10px;
-border-radius:10px;
-background:#0f172a;
-border:1px solid var(--line);
+  display:grid;
+  grid-template-columns:60px 1fr auto;
+  gap:8px;
+  padding:10px;
+  border-radius:10px;
+  background:#0f172a;
+  border:1px solid var(--line);
 }
-
 .r{border-left:4px solid #ef4444}
 .p{border-left:4px solid #f59e0b}
 .s{border-left:4px solid #22c55e}
-
-.footer{
-text-align:center;
-color:var(--muted);
-font-size:12px;
-}
-
+.name{font-weight:800}
+.desc{color:var(--muted);font-size:12px}
+.val{font-weight:800;font-variant-numeric:tabular-nums}
+.status{min-height:22px;margin-top:10px;color:#cbd5e1;font-size:13px}
+.footer{text-align:center;color:var(--muted);font-size:12px}
 @media(max-width:860px){
-.g3,.g4,.ranges{
-grid-template-columns:1fr;
+  .g3,.g4,.ranges,.quote{grid-template-columns:1fr}
+  .lv{grid-template-columns:56px 1fr}
+  .val{grid-column:1/-1}
 }
-}
-
 </style>
 </head>
-
 <body>
-
 <div class="wrap">
 
-<div class="card">
+  <div class="card">
+    <h1>Pivot HLC 台股自動查詢計算器</h1>
+    <div class="sub">
+      輸入代碼後，會先查上市，再查上櫃；抓到開高低收後直接自動計算。<br>
+      若瀏覽器擋跨站抓取，仍可手動輸入 H / L / C / O。
+    </div>
 
-<h1>Pivot HLC 台股計算器</h1>
+    <div class="grid g3" style="margin-top:12px;">
+      <div>
+        <label for="stockCode">股票 / ETF 代碼</label>
+        <input id="stockCode" placeholder="例如 2330、0050、6488">
+      </div>
+      <div>
+        <label for="mode">Pivot 模式</label>
+        <select id="mode">
+          <option>Traditional</option>
+          <option>Fibonacci</option>
+          <option>Woodie</option>
+          <option>Classic</option>
+          <option>DM</option>
+          <option>Camarilla</option>
+        </select>
+      </div>
+      <div>
+        <label for="decimals">小數位</label>
+        <select id="decimals">
+          <option value="0">0</option>
+          <option value="1">1</option>
+          <option value="2" selected>2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+        </select>
+      </div>
+    </div>
 
-<div class="grid g3">
+    <div class="grid g3" style="margin-top:12px;">
+      <button class="primary" id="queryBtn">一鍵查詢並自動計算</button>
+      <button class="success" id="copyBtn">複製完整結果</button>
+      <button class="ghost" id="lineBtn">複製 LINE 短版</button>
+    </div>
 
-<div>
-<label>股票代碼</label>
-<input id="stockCode" placeholder="例如 2330">
-</div>
+    <div class="quote" id="quoteBox"></div>
+    <div class="status" id="status"></div>
+  </div>
 
-<div>
-<label>Pivot 模式</label>
-<select id="mode">
-<option>Traditional</option>
-<option>Fibonacci</option>
-<option>Woodie</option>
-<option>Classic</option>
-<option>DM</option>
-<option>Camarilla</option>
-</select>
-</div>
+  <div class="card">
+    <h2>H / L / C / O</h2>
+    <div class="grid g4" style="margin-top:12px;">
+      <div><label for="high">H 最高價</label><input id="high" placeholder="最高"></div>
+      <div><label for="low">L 最低價</label><input id="low" placeholder="最低"></div>
+      <div><label for="close">C 收盤價</label><input id="close" placeholder="收盤"></div>
+      <div><label for="open">O 開盤價（DM 用）</label><input id="open" placeholder="開盤"></div>
+    </div>
+  </div>
 
-<div>
-<label>小數位</label>
-<select id="decimals">
-<option>0</option>
-<option>1</option>
-<option selected>2</option>
-<option>3</option>
-<option>4</option>
-</select>
-</div>
+  <div class="card">
+    <h2>P ±2% / R1 ±2% / S1 ±2%</h2>
+    <div id="ranges" class="ranges"></div>
+  </div>
 
-</div>
+  <div class="card">
+    <h2>Pivot</h2>
+    <div id="levels" class="levels"></div>
+  </div>
 
-<br>
+  <div class="card">
+    <h2>可直接貼到 LINE / 筆記</h2>
+    <textarea id="output" readonly></textarea>
+  </div>
 
-<button class="primary" onclick="queryAndCalculate()">查詢並計算</button>
+  <div class="card">
+    <button class="danger" id="resetBtn">清空</button>
+  </div>
 
-<div id="status"></div>
-
-</div>
-
-<div class="card">
-
-<h2>H L C O</h2>
-
-<div class="grid g4">
-
-<input id="high" placeholder="最高">
-<input id="low" placeholder="最低">
-<input id="close" placeholder="收盤">
-<input id="open" placeholder="開盤">
-
-</div>
-
-</div>
-
-<div class="card">
-
-<h2>P ±2% / R1 / S1</h2>
-
-<div id="ranges" class="ranges"></div>
-
-</div>
-
-<div class="card">
-
-<h2>Pivot</h2>
-
-<div id="levels" class="levels"></div>
-
-</div>
-
-<div class="card">
-
-<textarea id="output"></textarea>
-
-</div>
-
-<div class="footer">
-GitHub Pages Pivot Calculator
-</div>
-
+  <div class="footer">
+    GitHub Pages Pivot Calculator
+  </div>
 </div>
 
 <script>
+const $ = (id) => document.getElementById(id);
+let lastInfo = null;
 
+const levelDesc = {
+  R5:'極端延伸壓力', R4:'高位延伸壓力', R3:'強壓區', R2:'次強壓力', R1:'第一壓力',
+  P:'多空分界',
+  S1:'第一支撐', S2:'次強支撐', S3:'強支撐區', S4:'低位延伸支撐', S5:'極端超跌支撐'
+};
+
+function exists(v){ return typeof v === 'number' && Number.isFinite(v); }
+function fmt(v,d){ return exists(v) ? Number(v).toFixed(d) : '--'; }
+function num(id, fallbackNaN = true){
+  const v = $(id).value.trim();
+  if(v === '') return fallbackNaN ? NaN : null;
+  return parseFloat(v);
+}
+function cleanNumber(value){
+  if(value === undefined || value === null) return NaN;
+  if(typeof value === 'number') return value;
+  const s = String(value).replace(/,/g,'').trim();
+  if(!s || s === '--' || s === '-') return NaN;
+  return parseFloat(s);
+}
+function pick(obj, keys){
+  for(const k of keys){
+    if(obj && obj[k] !== undefined && obj[k] !== null && String(obj[k]).trim() !== ''){
+      return obj[k];
+    }
+  }
+  return null;
+}
+function setStatus(msg, err=false){
+  const el = $('status');
+  el.textContent = msg;
+  el.style.color = err ? '#fca5a5' : '#cbd5e1';
+}
+
+function inferSecurityType(info){
+  const name = (info?.name || '').toUpperCase();
+  const code = String(info?.code || '');
+  if(name.includes('ETF') || code.startsWith('00')) return 'ETF';
+  return '股票';
+}
+
+function renderQuote(info, d){
+  const securityType = inferSecurityType(info);
+  const items = [
+    ['市場', info.market || '--'],
+    ['類型', securityType],
+    ['代碼', info.code || '--'],
+    ['名稱', info.name || '--'],
+    ['開盤', fmt(info.open, d)],
+    ['最高', fmt(info.high, d)],
+    ['最低', fmt(info.low, d)],
+    ['收盤', fmt(info.close, d)]
+  ];
+  $('quoteBox').innerHTML = items.map(([k,v]) =>
+    `<div class="mini"><div class="k">${k}</div><div class="v">${v}</div></div>`
+  ).join('');
+}
+
+function zone(v){
+  if(!exists(v)) return null;
+  return { lo: v * 0.98, hi: v * 1.02 };
+}
+
+function renderRanges(result, d){
+  const arr = [['P', result.P], ['R1', result.R1], ['S1', result.S1]];
+  $('ranges').innerHTML = arr.map(([k,v]) => {
+    const z = zone(v);
+    if(!z) return '';
+    return `<div class="range"><b>${k} ±2%</b><div style="margin-top:8px;color:#94a3b8;line-height:1.6">
+      下緣：${fmt(z.lo,d)}<br>
+      中值：${fmt(v,d)}<br>
+      上緣：${fmt(z.hi,d)}
+    </div></div>`;
+  }).join('');
+}
+
+function renderLevels(result, d){
+  const order = ['R5','R4','R3','R2','R1','P','S1','S2','S3','S4','S5'];
+  $('levels').innerHTML = order
+    .filter(k => exists(result[k]))
+    .map(k => {
+      const cls = k[0] === 'R' ? 'r' : (k[0] === 'S' ? 's' : 'p');
+      return `<div class="lv ${cls}">
+        <div class="name">${k}</div>
+        <div class="desc">${levelDesc[k] || ''}</div>
+        <div class="val">${fmt(result[k], d)}</div>
+      </div>`;
+    }).join('');
+}
+
+function buildText(info, mode, H, L, C, O, result, d){
+  const order = ['R5','R4','R3','R2','R1','P','S1','S2','S3','S4','S5'];
+  const securityType = info ? inferSecurityType(info) : '';
+  const code = info?.code || $('stockCode').value.trim();
+  const market = info?.market || '';
+  const name = info?.name || '';
+
+  const lines = [];
+  lines.push(`【${code ? code + ' ' : ''}${name ? name + ' ' : ''}${market ? market + ' ' : ''}${securityType ? securityType + ' ' : ''}Pivot 計算結果】`);
+  lines.push(`模式=${mode}`);
+  lines.push(`H=${fmt(H,d)}  L=${fmt(L,d)}  C=${fmt(C,d)}${exists(O) ? `  O=${fmt(O,d)}` : ''}`);
+  lines.push('');
+  order.forEach(k => { if(exists(result[k])) lines.push(`${k} ${fmt(result[k], d)}`); });
+  if(exists(result.P)) lines.push(`P±2% ${fmt(result.P*0.98,d)} ~ ${fmt(result.P*1.02,d)}`);
+  if(exists(result.R1)) lines.push(`R1±2% ${fmt(result.R1*0.98,d)} ~ ${fmt(result.R1*1.02,d)}`);
+  if(exists(result.S1)) lines.push(`S1±2% ${fmt(result.S1*0.98,d)} ~ ${fmt(result.S1*1.02,d)}`);
+  return lines.join('\\n');
+}
+
+function buildLineText(info, mode, result, d){
+  const order = ['R5','R4','R3','R2','R1','P','S1','S2','S3','S4','S5'];
+  const head = info?.code ? `${info.code}${info.name ? ' ' + info.name : ''}` : '';
+  return (head ? head + '\\n' : '') +
+    order.filter(k => exists(result[k])).map(k => `${k}:${fmt(result[k], d)}`).join(' ｜ ') +
+    `\\n(${mode})`;
+}
+
+// Pivot 計算
 function calcTraditional(H,L,C){
-
-let P=(H+L+C)/3
-
-let R1=2*P-L
-let S1=2*P-H
-
-let R2=P+(H-L)
-let S2=P-(H-L)
-
-let R3=H+2*(P-L)
-let S3=L-2*(H-P)
-
-return {P,R1,S1,R2,S2,R3,S3}
-
+  const P=(H+L+C)/3;
+  const R1=2*P-L, S1=2*P-H;
+  const R2=P+(H-L), S2=P-(H-L);
+  const R3=H+2*(P-L), S3=L-2*(H-P);
+  const R4=R3+(R2-R1), S4=S3-(S1-S2);
+  const R5=R4+(R2-R1), S5=S4-(S1-S2);
+  return {P,R1,S1,R2,S2,R3,S3,R4,S4,R5,S5};
+}
+function calcClassic(H,L,C){
+  const P=(H+L+C)/3;
+  const R1=2*P-L, S1=2*P-H;
+  const R2=P+(H-L), S2=P-(H-L);
+  const R3=H+2*(P-L), S3=L-2*(H-P);
+  return {P,R1,S1,R2,S2,R3,S3};
+}
+function calcFibonacci(H,L,C){
+  const P=(H+L+C)/3, R=H-L;
+  return {
+    P,
+    R1:P+R*0.382, S1:P-R*0.382,
+    R2:P+R*0.618, S2:P-R*0.618,
+    R3:P+R*1.0,   S3:P-R*1.0
+  };
+}
+function calcWoodie(H,L,C){
+  const P=(H+L+2*C)/4;
+  const R1=2*P-L, S1=2*P-H;
+  const R2=P+(H-L), S2=P-(H-L);
+  const R3=H+2*(P-L), S3=L-2*(H-P);
+  const R4=R3+(R2-R1), S4=S3-(S1-S2);
+  return {P,R1,S1,R2,S2,R3,S3,R4,S4};
+}
+function calcDM(H,L,C,O){
+  let X;
+  if(C < O) X = H + 2*L + C;
+  else if(C > O) X = 2*H + L + C;
+  else X = H + L + 2*C;
+  return { P:X/4, R1:X/2-L, S1:X/2-H };
+}
+function calcCamarilla(H,L,C){
+  const r=(H-L)*1.1;
+  return {
+    P:(H+L+C)/3,
+    R1:C+r/12, S1:C-r/12,
+    R2:C+r/6,  S2:C-r/6,
+    R3:C+r/4,  S3:C-r/4,
+    R4:C+r/2,  S4:C-r/2,
+    R5:(H/L)*C,
+    S5:C-((H/L)*C-C)
+  };
+}
+function calcByMode(mode,H,L,C,O){
+  switch(mode){
+    case 'Traditional': return calcTraditional(H,L,C);
+    case 'Fibonacci': return calcFibonacci(H,L,C);
+    case 'Woodie': return calcWoodie(H,L,C);
+    case 'Classic': return calcClassic(H,L,C);
+    case 'DM': return calcDM(H,L,C,O);
+    case 'Camarilla': return calcCamarilla(H,L,C);
+    default: return calcTraditional(H,L,C);
+  }
 }
 
-function render(result){
+// 自動抓資料：先上市，再上櫃
+async function fetchTWSE(code){
+  const res = await fetch('https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL');
+  if(!res.ok) throw new Error('TWSE HTTP ' + res.status);
+  const data = await res.json();
+  if(!Array.isArray(data)) throw new Error('TWSE 格式異常');
 
-let html=""
+  const row = data.find(item =>
+    String(pick(item, ['Code','證券代號','股票代號']) || '').trim() === code
+  );
+  if(!row) return null;
 
-for(let k in result){
-
-let cls="p"
-
-if(k[0]=="R")cls="r"
-if(k[0]=="S")cls="s"
-
-html+=`<div class="lv ${cls}">
-<div>${k}</div>
-<div></div>
-<div>${result[k].toFixed(2)}</div>
-</div>`
-
+  const info = {
+    market: '上市',
+    code,
+    name: String(pick(row, ['Name','證券名稱','股票名稱']) || '').trim(),
+    open: cleanNumber(pick(row, ['OpeningPrice','開盤價','Open','開盤'])),
+    high: cleanNumber(pick(row, ['HighestPrice','最高價','High','最高'])),
+    low: cleanNumber(pick(row, ['LowestPrice','最低價','Low','最低'])),
+    close: cleanNumber(pick(row, ['ClosingPrice','收盤價','Close','收盤']))
+  };
+  return exists(info.high) && exists(info.low) && exists(info.close) ? info : null;
 }
 
-document.getElementById("levels").innerHTML=html
+async function fetchTPEX(code){
+  const url = `https://www.tpex.org.tw/ch/stock/aftertrading/daily_trading_info/st43.php?code=${encodeURIComponent(code)}`;
+  const res = await fetch(url);
+  if(!res.ok) throw new Error('TPEx HTTP ' + res.status);
+  const html = await res.text();
 
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+  const rows = Array.from(doc.querySelectorAll('tr'));
+  let found = null;
+
+  for(const tr of rows){
+    const cells = Array.from(tr.querySelectorAll('th,td')).map(td => td.textContent.replace(/\\s+/g,' ').trim());
+    if(cells.length && (cells[0] === code || cells.includes(code))){
+      found = cells;
+      break;
+    }
+  }
+  if(!found) return null;
+
+  const info = {
+    market: '上櫃',
+    code,
+    name: found[1] || '',
+    open: cleanNumber(found[4]),
+    high: cleanNumber(found[5]),
+    low: cleanNumber(found[6]),
+    close: cleanNumber(found[7])
+  };
+  return exists(info.high) && exists(info.low) && exists(info.close) ? info : null;
+}
+
+function fillInputs(info){
+  $('high').value = exists(info.high) ? info.high : '';
+  $('low').value = exists(info.low) ? info.low : '';
+  $('close').value = exists(info.close) ? info.close : '';
+  $('open').value = exists(info.open) ? info.open : '';
 }
 
 function calc(){
+  const H = num('high');
+  const L = num('low');
+  const C = num('close');
+  const O = $('open').value.trim() === '' ? C : num('open');
+  const mode = $('mode').value;
+  const d = parseInt($('decimals').value, 10);
 
-let H=parseFloat(high.value)
-let L=parseFloat(low.value)
-let C=parseFloat(close.value)
+  if([H,L,C].some(v => Number.isNaN(v))){
+    setStatus('請先輸入或查詢完整的 H / L / C。', true);
+    return null;
+  }
+  if(H < L){
+    setStatus('H 不能小於 L。', true);
+    return null;
+  }
+  if(mode === 'DM' && Number.isNaN(O)){
+    setStatus('DM 模式請補 O 開盤價。', true);
+    return null;
+  }
 
-let result=calcTraditional(H,L,C)
-
-render(result)
-
+  const result = calcByMode(mode, H, L, C, O);
+  renderRanges(result, d);
+  renderLevels(result, d);
+  $('output').value = buildText(lastInfo, mode, H, L, C, O, result, d);
+  setStatus('已完成計算。');
+  return { mode, result, d };
 }
 
-function queryAndCalculate(){
+async function queryAndCalculate(){
+  const code = $('stockCode').value.trim();
+  const d = parseInt($('decimals').value, 10);
+  if(!code){
+    setStatus('請先輸入代碼。', true);
+    return;
+  }
 
-let H=parseFloat(high.value)
-let L=parseFloat(low.value)
-let C=parseFloat(close.value)
+  setStatus('正在自動抓取上市 / 上櫃資料...');
+  try{
+    let info = null;
+    try { info = await fetchTWSE(code); } catch(e){}
+    if(!info){
+      try { info = await fetchTPEX(code); } catch(e){}
+    }
+    if(!info) throw new Error('找不到上市或上櫃資料，或瀏覽器阻擋跨站抓取');
 
-if(!H||!L||!C){
+    lastInfo = info;
+    fillInputs(info);
+    renderQuote(info, d);
 
-document.getElementById("status").innerText="請先輸入 H L C"
+    const calcResult = calc();
+    if(!calcResult) throw new Error('資料已抓到，但計算失敗');
 
-return
-
+    setStatus(`已完成 ${info.market} / ${inferSecurityType(info)} 自動查詢與計算：${info.code}${info.name ? ' ' + info.name : ''}`);
+  }catch(err){
+    setStatus('自動查詢失敗：' + err.message + '。可改手動輸入 H / L / C。', true);
+  }
 }
 
-calc()
-
+async function copyText(text){
+  try{
+    await navigator.clipboard.writeText(text);
+  }catch{
+    $('output').select();
+    document.execCommand('copy');
+  }
 }
 
+$('queryBtn').addEventListener('click', queryAndCalculate);
+$('copyBtn').addEventListener('click', async () => {
+  const data = calc();
+  if(!data) return;
+  await copyText($('output').value);
+  setStatus('完整結果已複製。');
+});
+$('lineBtn').addEventListener('click', async () => {
+  const data = calc();
+  if(!data) return;
+  await copyText(buildLineText(lastInfo, data.mode, data.result, data.d));
+  setStatus('LINE 短版已複製。');
+});
+$('resetBtn').addEventListener('click', () => {
+  ['stockCode','high','low','close','open'].forEach(id => $(id).value = '');
+  $('levels').innerHTML = '';
+  $('ranges').innerHTML = '';
+  $('quoteBox').innerHTML = '';
+  $('output').value = '';
+  lastInfo = null;
+  setStatus('已清空。');
+});
+
+$('stockCode').addEventListener('keydown', (e) => {
+  if(e.key === 'Enter') queryAndCalculate();
+});
+
+$('stockCode').value = '2330';
 </script>
-
 </body>
 </html>
