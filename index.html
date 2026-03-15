@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pivot HLC 台股自動查詢計算器</title>
+
+<style>
+
+:root{
+--bg:#0f172a;
+--card:#111827;
+--card2:#1f2937;
+--line:#334155;
+--text:#e5eefc;
+--muted:#94a3b8;
+--up:#ef4444;
+--mid:#f59e0b;
+--down:#22c55e;
+--accent:#3b82f6;
+}
+
+*{box-sizing:border-box}
+
+body{
+margin:0;
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans TC",sans-serif;
+background:linear-gradient(180deg,#0b1220,#111827);
+color:var(--text);
+}
+
+.wrap{
+max-width:1000px;
+margin:auto;
+padding:16px;
+}
+
+.card{
+background:rgba(17,24,39,.96);
+border:1px solid var(--line);
+border-radius:18px;
+padding:16px;
+margin-bottom:14px;
+}
+
+h1,h2{
+margin:0 0 10px;
+}
+
+.grid{
+display:grid;
+gap:12px;
+}
+
+.g3{
+grid-template-columns:repeat(3,1fr);
+}
+
+.g4{
+grid-template-columns:repeat(4,1fr);
+}
+
+label{
+font-size:13px;
+color:var(--muted);
+}
+
+input,select,textarea,button{
+width:100%;
+padding:12px;
+border-radius:10px;
+border:1px solid var(--line);
+background:var(--card2);
+color:white;
+}
+
+textarea{
+min-height:200px;
+}
+
+button{
+cursor:pointer;
+font-weight:bold;
+}
+
+.primary{background:#3b82f6}
+.success{background:#16a34a}
+.ghost{background:#334155}
+.danger{background:#7f1d1d}
+
+.ranges{
+display:grid;
+grid-template-columns:repeat(3,1fr);
+gap:10px;
+}
+
+.range{
+background:#0f172a;
+padding:10px;
+border-radius:10px;
+border:1px solid var(--line);
+}
+
+.levels{
+display:grid;
+gap:8px;
+}
+
+.lv{
+display:grid;
+grid-template-columns:60px 1fr auto;
+gap:8px;
+padding:10px;
+border-radius:10px;
+background:#0f172a;
+border:1px solid var(--line);
+}
+
+.r{border-left:4px solid #ef4444}
+.p{border-left:4px solid #f59e0b}
+.s{border-left:4px solid #22c55e}
+
+.footer{
+text-align:center;
+color:var(--muted);
+font-size:12px;
+}
+
+@media(max-width:860px){
+.g3,.g4,.ranges{
+grid-template-columns:1fr;
+}
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="wrap">
+
+<div class="card">
+
+<h1>Pivot HLC 台股計算器</h1>
+
+<div class="grid g3">
+
+<div>
+<label>股票代碼</label>
+<input id="stockCode" placeholder="例如 2330">
+</div>
+
+<div>
+<label>Pivot 模式</label>
+<select id="mode">
+<option>Traditional</option>
+<option>Fibonacci</option>
+<option>Woodie</option>
+<option>Classic</option>
+<option>DM</option>
+<option>Camarilla</option>
+</select>
+</div>
+
+<div>
+<label>小數位</label>
+<select id="decimals">
+<option>0</option>
+<option>1</option>
+<option selected>2</option>
+<option>3</option>
+<option>4</option>
+</select>
+</div>
+
+</div>
+
+<br>
+
+<button class="primary" onclick="queryAndCalculate()">查詢並計算</button>
+
+<div id="status"></div>
+
+</div>
+
+<div class="card">
+
+<h2>H L C O</h2>
+
+<div class="grid g4">
+
+<input id="high" placeholder="最高">
+<input id="low" placeholder="最低">
+<input id="close" placeholder="收盤">
+<input id="open" placeholder="開盤">
+
+</div>
+
+</div>
+
+<div class="card">
+
+<h2>P ±2% / R1 / S1</h2>
+
+<div id="ranges" class="ranges"></div>
+
+</div>
+
+<div class="card">
+
+<h2>Pivot</h2>
+
+<div id="levels" class="levels"></div>
+
+</div>
+
+<div class="card">
+
+<textarea id="output"></textarea>
+
+</div>
+
+<div class="footer">
+GitHub Pages Pivot Calculator
+</div>
+
+</div>
+
+<script>
+
+function calcTraditional(H,L,C){
+
+let P=(H+L+C)/3
+
+let R1=2*P-L
+let S1=2*P-H
+
+let R2=P+(H-L)
+let S2=P-(H-L)
+
+let R3=H+2*(P-L)
+let S3=L-2*(H-P)
+
+return {P,R1,S1,R2,S2,R3,S3}
+
+}
+
+function render(result){
+
+let html=""
+
+for(let k in result){
+
+let cls="p"
+
+if(k[0]=="R")cls="r"
+if(k[0]=="S")cls="s"
+
+html+=`<div class="lv ${cls}">
+<div>${k}</div>
+<div></div>
+<div>${result[k].toFixed(2)}</div>
+</div>`
+
+}
+
+document.getElementById("levels").innerHTML=html
+
+}
+
+function calc(){
+
+let H=parseFloat(high.value)
+let L=parseFloat(low.value)
+let C=parseFloat(close.value)
+
+let result=calcTraditional(H,L,C)
+
+render(result)
+
+}
+
+function queryAndCalculate(){
+
+let H=parseFloat(high.value)
+let L=parseFloat(low.value)
+let C=parseFloat(close.value)
+
+if(!H||!L||!C){
+
+document.getElementById("status").innerText="請先輸入 H L C"
+
+return
+
+}
+
+calc()
+
+}
+
+</script>
+
+</body>
+</html>
